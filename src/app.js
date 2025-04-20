@@ -91,7 +91,7 @@ app.post("/register", async (req, res) => {
             });
 
             const registered = await registerUser.save();
-            console.log("User registered:", registered);
+            console.log("User registered Successfully:", registered);
 
             // Store user's email in session
             req.session.userEmail = req.body.email;
