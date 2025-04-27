@@ -77,24 +77,70 @@ app.get("/profile", async (req, res) => {
     }
 });
 
+const { TableClient, AzureNamedKeyCredential } = require("@azure/data-tables");
+
+require('dotenv').config();
+const azureStorageAccountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
+// Azure Table Storage config
+const account = "summersafestorageaccount";
+const tableName = "Users"; // your table name
+
+const credential = new AzureNamedKeyCredential(account, accountKey);
+const client = new TableClient(
+  `https://${account}.table.core.windows.net`,
+  tableName,
+  credential
+);
+
+// Function to get all users from Azure Table Storage
+async function getAllUsers() {
+    try {
+        const users = [];
+        for await (const entity of client.listEntities()) {
+            users.push(entity); // Store each entity (user) in the users array
+        }
+        return users;
+    } catch (error) {
+        console.error("Error fetching users from Table Storage:", error);
+        throw new Error("Failed to retrieve users from Azure Table Storage");
+    }
+}
+
+// POST route to register a user
 app.post("/register", async (req, res) => {
     try {
-        const password = req.body.password;
-        const cpassword = req.body.confirmpassword;
-        
-        if (password === cpassword) {
+        const { email, password, confirmpassword, mobile } = req.body;
+
+        if (password === confirmpassword) {
+            // Save to MongoDB
             const registerUser = new Register({
-                email: req.body.email,
+                email: email,
                 password: password,
-                confirmpassword: cpassword,
-                mobile: req.body.mobile
+                confirmpassword: confirmpassword,
+                mobile: mobile
             });
 
             const registered = await registerUser.save();
-            console.log("User registered Successfully:", registered);
+            console.log("User registered Successfully in MongoDB:", registered);
+
+            // Save to Azure Table Storage
+            const userEntity = {
+                partitionKey: "User",  // you can keep it fixed for all users
+                rowKey: email,         // email as unique ID
+                email: email,
+                password: password,
+                mobile: mobile
+            };
+
+            await client.createEntity(userEntity);
+            console.log("User stored in Azure Table Storage");
+
+            // Get all users from Azure Table Storage and log them
+            const users = await getAllUsers();
+            console.log("All users in Azure Table Storage:", users);
 
             // Store user's email in session
-            req.session.userEmail = req.body.email;
+            req.session.userEmail = email;
 
             // Redirect to profile page after successful registration
             res.status(201).redirect("/");
@@ -107,6 +153,8 @@ app.post("/register", async (req, res) => {
         res.status(400).send(error);
     }
 });
+
+
 
 app.post("/login", async (req, res) => {
     try {
