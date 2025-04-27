@@ -80,10 +80,13 @@ app.get("/profile", async (req, res) => {
 const { TableClient, AzureNamedKeyCredential } = require("@azure/data-tables");
 
 require('dotenv').config();
-const azureStorageAccountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
+const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
 // Azure Table Storage config
 const account = "summersafestorageaccount";
 const tableName = "Users"; // your table name
+require('dotenv').config();
+console.log('Azure Storage Account Key:', process.env.AZURE_STORAGE_ACCOUNT_KEY);  // Check if the key is loaded
+
 
 const credential = new AzureNamedKeyCredential(account, accountKey);
 const client = new TableClient(
